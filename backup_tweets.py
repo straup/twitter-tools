@@ -125,7 +125,7 @@ class mytweets:
                 if 'status' in response and response['status'] == '301':
                     short_urls[response['location']] = orig_url
                     new_text = new_text.replace(orig_url, response['location'])
-            except:
+            except Exception, e:
                 logging.error("failed to expand %s: %s" % (orig_url, e))
 
         tweet['short_urls'] = short_urls
