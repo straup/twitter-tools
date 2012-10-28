@@ -230,6 +230,10 @@ class mytweets:
                 logging.error("Twitter says NO: %s" % tweets['error'])
                 break
 
+            if tweets.get("errors", False):
+                logging.error("Twitter says NO: %s" % tweets['errors'][0]['message'])
+                break
+
             if not tweets:
                 logging.debug("No tweets, stop looking")
                 break
