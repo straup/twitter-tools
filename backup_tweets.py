@@ -168,7 +168,7 @@ class mytweets:
             if self.cfg('timeline') == 'user' and 'user' in t:
                 del t['user']
 
-            self.lookup_short_urls(t)
+            # self.lookup_short_urls(t)
 
         logging.info("writing stuff back to disk...")
 
@@ -182,6 +182,7 @@ class mytweets:
         all_tweets = []
         seen_ids = set()
         page = 0
+        max_id = 0
 
         args = {'count': 200, 'screen_name': self.cfg('username')}
 
@@ -192,9 +193,13 @@ class mytweets:
 
         while True:
 
-            logging.debug("fetch page %s" % page)
-            args['page'] = page
+            logging.debug("fetch page %s and max_id %s" % (page, max_id))
 
+            # https://dev.twitter.com/rest/public/timelines
+
+            if max_id > 0:
+                args['max_id'] = max_id
+               
             # Via http://blog.yjl.im/2010/04/first-step-to-twitter-oauth-streaming.html
 
             consumer = oauth.Consumer(key=self.cfg('consumer_key'), secret=self.cfg('consumer_secret'))
@@ -229,22 +234,10 @@ class mytweets:
                 logging.error("JSON parsing failed: %s" % e)
                 break
 
-            """
-            if 'error' in tweets:
-                logging.error("Twitter says NO: %s" % tweets['error'])
-                break
-
-            if tweets.get("errors", False):
-                logging.error("Twitter says NO: %s" % tweets['errors'][0]['message'])
-                break
-            """
-
             if not tweets:
                 logging.debug("No tweets, what...")
                 logging.debug(tweets)
-                sys.exit()
-                time.sleep(1)
-                continue
+                break
 
             for tweet in tweets:
 
@@ -252,6 +245,8 @@ class mytweets:
                     seen_ids.add(tweet['id'])
                     all_tweets.append(tweet)
                     all_tweets_len = len(all_tweets)
+
+                    max_id = int(tweet['id'])
 
             logging.debug("pause so as not to make Baby Twitter cry")
             time.sleep(2)
