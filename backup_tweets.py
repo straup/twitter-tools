@@ -42,12 +42,12 @@ class mytweets:
 
             'user': {
                 'remote': 'user_timeline',
-                'local': 'my_tweets'
+                'local': self.cfg('username')
                 },
 
             'friends': {
                 'remote': 'friends_timeline',
-                'local': 'my_friends_tweets'
+                'local': self.cfg('username') + '_friends'
                 }
 
             }
@@ -60,7 +60,7 @@ class mytweets:
         else :
             _local += '.json'
 
-        self.remote_timeline = "http://twitter.com/statuses/%s.json" % _remote
+        self.remote_timeline = "https://api.twitter.com/1.1/statuses/user_timeline.json" 
         self.local_timeline = _local
 
     def cfg (self, key):
@@ -131,13 +131,13 @@ class mytweets:
         tweet['short_urls'] = short_urls
         tweet['text'] = new_text
 
-    def fetch_and_save_new_tweets(self):
+    def fetch_and_save_new_tweets(self, **kwargs):
 
         tweets = self.load_all()
 
         old_tweet_ids = set(t['id'] for t in tweets)
 
-        if tweets:
+        if tweets and not kwargs.get('force', False):
             since_id = max(t['id'] for t in tweets)
         else:
             since_id = None
@@ -183,7 +183,7 @@ class mytweets:
         seen_ids = set()
         page = 0
 
-        args = {'count': 200}
+        args = {'count': 200, 'screen_name': self.cfg('username')}
 
         if since_id is not None:
             args['since_id'] = since_id
@@ -203,7 +203,12 @@ class mytweets:
 
             try:
 
-                resp, content = client.request("%s?%s" % (self.remote_timeline, urllib.urlencode(args)), 'GET')
+                # https://dev.twitter.com/rest/reference/get/statuses/user_timeline
+
+                url = "%s?%s" % (self.remote_timeline, urllib.urlencode(args))
+                print url
+
+                resp, content = client.request(url, 'GET')
                 logging.info(resp)
 
                 # This usually seems to mean the request has timed out, but if we try again
@@ -218,14 +223,13 @@ class mytweets:
                 logging.error("Aborting! HTTP request failed completely: %s" % e)
                 break
 
-            page += 1
-
             try:
                 tweets = json.loads(content)
             except Exception, e:
                 logging.error("JSON parsing failed: %s" % e)
                 break
 
+            """
             if 'error' in tweets:
                 logging.error("Twitter says NO: %s" % tweets['error'])
                 break
@@ -233,10 +237,14 @@ class mytweets:
             if tweets.get("errors", False):
                 logging.error("Twitter says NO: %s" % tweets['errors'][0]['message'])
                 break
+            """
 
             if not tweets:
-                logging.debug("No tweets, stop looking")
-                break
+                logging.debug("No tweets, what...")
+                logging.debug(tweets)
+                sys.exit()
+                time.sleep(1)
+                continue
 
             for tweet in tweets:
 
@@ -247,6 +255,8 @@ class mytweets:
 
             logging.debug("pause so as not to make Baby Twitter cry")
             time.sleep(2)
+
+            page += 1
 
         all_tweets.sort(key = lambda t: t['id'], reverse=True)
         return all_tweets
@@ -284,6 +294,8 @@ class mytweets:
             return self.write_all_files(tweets)
 
         file = self.local_timeline
+        logging.info("write to %s" % file)
+
         fh = open(file, 'w')
 
         if self.cfg('pickle'):
@@ -336,6 +348,7 @@ if __name__ == '__main__':
     parser.add_option("-o", "--access-token", dest="access_token", default=None, help="")
     parser.add_option("-e", "--access-token-secret", dest="access_token_secret", default=None, help="")
     parser.add_option("-m", "--timeline", dest="timeline", default="user", help="")
+    parser.add_option("-u", "--username", dest="username", default=None, help="")
     parser.add_option("-t", "--as-text", dest="pickle", default=False, help="")
     parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False, help="")
 
@@ -367,4 +380,6 @@ if __name__ == '__main__':
     # TODO: ensure various parameters here
 
     tw = mytweets(cfg)
-    tw.fetch_and_save_new_tweets()
+
+    # please make a command-line switch that doesn't breack the config parser...
+    tw.fetch_and_save_new_tweets(force=False)
