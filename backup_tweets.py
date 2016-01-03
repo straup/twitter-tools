@@ -241,7 +241,13 @@ class mytweets:
 
             for tweet in tweets:
 
-                if tweet['id'] not in seen_ids:
+                id = tweet.get('id', None)
+
+                if not id:
+                    logging.error("Failed to locate ID in tweet: %s" % tweet)
+                    continue
+
+                if id not in seen_ids:
                     seen_ids.add(tweet['id'])
                     all_tweets.append(tweet)
                     all_tweets_len = len(all_tweets)
