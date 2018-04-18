@@ -211,7 +211,7 @@ class mytweets:
                 # https://dev.twitter.com/rest/reference/get/statuses/user_timeline
 
                 url = "%s?%s" % (self.remote_timeline, urllib.urlencode(args))
-                print url
+                logging.info(url)
 
                 resp, content = client.request(url, 'GET')
                 logging.info(resp)
@@ -239,6 +239,10 @@ class mytweets:
                 logging.debug(tweets)
                 break
 
+            logging.debug("fetched %s tweets" % len(tweets))
+
+            new = 0
+
             for tweet in tweets:
 
                 id = tweet.get('id', None)
@@ -252,7 +256,20 @@ class mytweets:
                     all_tweets.append(tweet)
                     all_tweets_len = len(all_tweets)
 
-                    max_id = int(tweet['id'])
+                    id = int(tweet['id'])
+
+                    if id == max_id:
+                        break
+
+                    max_id = id
+                    new += 1
+
+                else:
+                    logging.debug("already seen %s" % id)
+
+            if new == 0:
+                logging.info("no new tweets, stopping")
+                break
 
             logging.debug("pause so as not to make Baby Twitter cry")
             time.sleep(2)
